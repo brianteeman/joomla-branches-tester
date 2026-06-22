@@ -437,8 +437,6 @@ The Joomla version installed in the web server container is configured with the 
 - All the 'Behaviour - Backward Compatibility' plugins are disabled to detect backward compatibility issues.
 - Joomla 6 update notification is snoozed for all users, if present.
 - The automatic run of the 'Welcome to Joomla!' guided tour is canceled from Joomla version 5.1 onwards.
-- Using 'filesystem' for session handler to prevent logging in again after a few minutes,
-  for whatever reason this differs from 'database'.
 
 ### Manual Testing
 
