@@ -70,7 +70,8 @@ declare -ar \
 # shellcheck disable=SC2034 # It is used by other scripts after sourcing
 declare -r \
   JBT_REDIS_HOST="jbt-redis" \
-  JBT_REDIS_PORT="6379"
+  JBT_REDIS_PORT="6379" \
+  JBT_REDIS_SOCKET="/var/run/redis-socket/redis.sock"
 
 # Memcached base container used as Joomla cache handler, see scripts/memcached.
 # shellcheck disable=SC2034 # It is used by other scripts after sourcing

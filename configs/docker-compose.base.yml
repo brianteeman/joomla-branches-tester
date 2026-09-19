@@ -82,10 +82,15 @@ services:
     container_name: jbt-redis
     restart: unless-stopped
     image: redis:7-alpine
+    command: >
+      sh -c 'chown redis:redis /var/run/redis-socket &&
+      exec /usr/bin/setpriv --reuid redis --regid redis --clear-groups redis-server --unixsocket /var/run/redis-socket/redis.sock --unixsocketperm 777'
     ports:
       - "7014:6379" # Exposed port 7014 only needed if you like to connect from host tools
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - redis-socket:/var/run/redis-socket
     networks:
       jbt-network:
         ipv4_address: 10.0.0.14
@@ -233,6 +238,9 @@ services:
       - type: volume
         source: postgresql-socket
         target: /var/run/postgresql-socket
+      - type: volume
+        source: redis-socket
+        target: /var/run/redis-socket
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

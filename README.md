@@ -966,7 +966,14 @@ scripts/redis 62 on
 ```
 
 This enables caching and configures Joomla's `configuration.php` to use the `redis` cache handler with
-host `jbt-redis`, port `6379` and the next free Redis database number.
+host `jbt-redis`, port `6379` and the next free Redis database number by default.
+
+You can use the shared Redis Unix socket instead of TCP, for example:
+```
+scripts/redis 62 on socket
+```
+
+This configures the Redis host as `/var/run/redis-socket/redis.sock` and port `0`.
 
 Switch back to Joomla's default file-based cache for example:
 ```

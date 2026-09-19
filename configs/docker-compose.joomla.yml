@@ -47,6 +47,9 @@
         source: postgresql-socket
         target: /var/run/postgresql-socket
       - type: volume
+        source: redis-socket
+        target: /var/run/redis-socket
+      - type: volume
         source: mitm-ca
         target: /mitm
     networks:

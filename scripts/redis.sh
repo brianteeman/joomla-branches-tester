@@ -3,6 +3,7 @@
 # redis.sh - Switches the Joomla cache handler to Redis or back to file cache in one or more Web Server containers.
 #   scripts/redis on
 #   scripts/redis 62 on
+#   scripts/redis 62 on socket
 #   scripts/redis 53 60 off
 #
 # Uses the 'jbt-redis' base Docker container (see configs/docker-compose.base.yml), started and stopped
@@ -24,6 +25,7 @@ function help {
     echo "
     redis – Toggles the Joomla cache handler between Redis and file cache in one or more Joomla web server containers.
             Mandatory argument must be 'on' or 'off'.
+            The optional 'socket' argument configures Redis access via Unix socket (default is TCP host).
             The optional Joomla instance can include one or more of installed: ${allInstalledInstances[*]} (default is all).
             The optional argument 'help' displays this page. For full details see https://bit.ly/JBT--README.
     $(random_quote)"
@@ -31,7 +33,7 @@ function help {
 
 # shellcheck disable=SC2207 # There are no spaces in version numbers
 allInstalledInstances=($(getAllInstalledInstances))
-
+socket=false
 instancesToChange=()
 while [ $# -ge 1 ]; do
   if [[ "$1" =~ ^(help|-h|--h|-help|--help|-\?)$ ]]; then
@@ -46,6 +48,9 @@ while [ $# -ge 1 ]; do
   elif [ "$1" = "off" ]; then
     todo="$1"
     shift # Argument is eaten as disable Redis.
+  elif [ "$1" = "socket" ]; then
+    socket=true
+    shift # Argument is eaten as use Redis with Unix socket.
   else
     help
     error "Argument '$1' is not valid."
@@ -113,6 +118,20 @@ if [ "${todo}" = "on" ]; then
   docker start jbt-redis > /dev/null
 fi
 
+if [ "${socket}" = true ]; then
+  if [ "${todo}" = "on" ] && ! docker exec jbt-redis test -S "${JBT_REDIS_SOCKET}"; then
+    error "jbt-redis – Redis socket is missing. Run 'docker compose up -d --force-recreate redis' first."
+    exit 1
+  fi
+  redisHost="${JBT_REDIS_SOCKET}"
+  redisPort=0
+  redisConnection="socket '${redisHost}'"
+else
+  redisHost="${JBT_REDIS_HOST}"
+  redisPort="${JBT_REDIS_PORT}"
+  redisConnection="host '${redisHost}', port ${redisPort}"
+fi
+
 for instance in "${instancesToChange[@]}"; do
 
   if [ ! -f "joomla-${instance}/configuration.php" ]; then
@@ -133,19 +152,15 @@ for instance in "${instancesToChange[@]}"; do
       fi
       usedRedisDbs[redisDb]=true
 
-      log "jbt-${instance} – Enabling Redis cache handler (host '${JBT_REDIS_HOST}', port ${JBT_REDIS_PORT}, db ${redisDb})"
-      # Field names as used by Joomla in 'configuration.php', see 'installation/configuration.php-dist':
-      #   Cache:   $caching, $cache_handler, $redis_server_host, $redis_server_port, $redis_server_db
-      #   Session: $session_redis_server_host, $session_redis_server_port, $session_redis_server_db
-      #            (only used if $session_handler is separately set to 'redis', not changed here)
+      log "jbt-${instance} – Enabling Redis cache handler (${redisConnection}, db ${redisDb})"
       docker exec "jbt-${instance}" bash -c "sed \
         -e \"s|\(public .caching =\).*|\1 1;|\" \
         -e \"s|\(public .cache_handler =\).*|\1 'redis';|\" \
-        -e \"s|\(public .redis_server_host =\).*|\1 '${JBT_REDIS_HOST}';|\" \
-        -e \"s|\(public .redis_server_port =\).*|\1 ${JBT_REDIS_PORT};|\" \
+        -e \"s|\(public .redis_server_host =\).*|\1 '${redisHost}';|\" \
+        -e \"s|\(public .redis_server_port =\).*|\1 ${redisPort};|\" \
         -e \"s|\(public .redis_server_db =\).*|\1 ${redisDb};|\" \
-        -e \"s|\(public .session_redis_server_host =\).*|\1 '${JBT_REDIS_HOST}';|\" \
-        -e \"s|\(public .session_redis_server_port =\).*|\1 ${JBT_REDIS_PORT};|\" \
+        -e \"s|\(public .session_redis_server_host =\).*|\1 '${redisHost}';|\" \
+        -e \"s|\(public .session_redis_server_port =\).*|\1 ${redisPort};|\" \
         -e \"s|\(public .session_redis_server_db =\).*|\1 ${redisDb};|\" \
         configuration.php > configuration.php.new && \
         mv configuration.php.new configuration.php && \

@@ -13,6 +13,8 @@ volumes:
     name: jbt-mariadb-socket
   postgresql-socket:
     name: jbt-postgresql-socket
+  redis-socket:
+    name: jbt-redis-socket
   # jbt-proxy certificate
   mitm-ca:
     name: jbt-mitma-ca
